@@ -203,7 +203,7 @@ if __name__ == '__main__':
     with open(os.path.join(rvc_models_dir, 'public_models.json'), encoding='utf8') as infile:
         public_models = json.load(infile)
 
-    with gr.Blocks(title='AICoverGenWebUI') as app:
+    with gr.Blocks(title='🐳 AISINGERS') as app:
 
         gr.Label('🐳 AISINGERS | https://t.me/aisingers', show_label=False)
 
@@ -365,5 +365,5 @@ if __name__ == '__main__':
         share=args.share_enabled,
         enable_queue=True,
         server_name=None if not args.listen else (args.listen_host or '0.0.0.0'),
-        server_port=args.listen_port or 9999,
+        server_port=args.listen_port or 7860,
     )
