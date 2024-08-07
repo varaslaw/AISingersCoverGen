@@ -36,9 +36,9 @@ def update_models_list():
 def load_public_models():
     models_table = []
     for model in public_models['voice_models']:
-        if not model['name'] in voice_models:
-            model = [model['name'], model['description'], model['credit'], model['url'], ', '.join(model['tags'])]
-            models_table.append(model)
+        if model['name'] not in voice_models:
+            model_info = [model['name'], model['description'], model['credit'], model['url'], ', '.join(model['tags'])]
+            models_table.append(model_info)
 
     tags = list(public_models['tags'].keys())
     return gr.DataFrame.update(value=models_table), gr.CheckboxGroup.update(choices=tags)
@@ -163,7 +163,7 @@ def pub_dl_autofill(pub_models, event: gr.SelectData):
     return gr.Text.update(value=pub_models.loc[event.index[0], 'URL']), gr.Text.update(value=pub_models.loc[event.index[0], 'Model Name'])
 
 def swap_visibility():
-    return gr.update(visible=True), gr.update(visible(False)), gr.update(value=''), gr.update(value=None)
+    return gr.update(visible=True), gr.update(visible=False), gr.update(value=''), gr.update(value=None)
 
 def process_file_upload(file):
     return file.name, gr.update(value=file.name)
