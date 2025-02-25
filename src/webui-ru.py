@@ -21,8 +21,7 @@ mdxnet_models_dir = os.path.join(BASE_DIR, 'mdxnet_models')
 rvc_models_dir = os.path.join(BASE_DIR, 'rvc_models')
 output_dir = os.path.join(BASE_DIR, 'song_output')
 
-mega = Mega()
-m = mega.login()
+m = Mega()
 
 def get_current_models(models_dir):
     models_list = os.listdir(models_dir)
