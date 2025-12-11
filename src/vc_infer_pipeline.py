@@ -136,6 +136,51 @@ class VC(object):
         f0 = np.nan_to_num(target)
         return f0  # Resized f0
 
+    def get_f0_fcpe_computation(
+        self,
+        x,
+        f0_min,
+        f0_max,
+        p_len,
+        hop_length=160,
+        threshold=0.05,
+    ):
+        x = x.astype(np.float32)
+        x /= np.quantile(np.abs(x), 0.999)
+        device = self.get_optimal_torch_device()
+        audio = torch.from_numpy(x).to(device, copy=True)
+        audio = torch.unsqueeze(audio, dim=0)
+        if audio.ndim == 2 and audio.shape[0] > 1:
+            audio = torch.mean(audio, dim=0, keepdim=True).detach()
+        audio = audio.detach()
+
+        pitch, periodicity = torchcrepe.predict(
+            audio,
+            self.sr,
+            hop_length,
+            f0_min,
+            f0_max,
+            "full",
+            batch_size=hop_length * 2,
+            device=device,
+            pad=True,
+            return_periodicity=True,
+        )
+        periodicity = torchcrepe.filter.median(periodicity, 3)
+        pitch = torchcrepe.filter.median(pitch, 3)
+        mask = periodicity >= threshold
+        pitch = pitch * mask
+
+        source = np.array(pitch.squeeze(0).cpu().float().numpy())
+        source[source < 0.001] = np.nan
+        target = np.interp(
+            np.arange(0, len(source) * p_len, len(source)) / p_len,
+            np.arange(0, len(source)),
+            source,
+        )
+        f0 = np.nan_to_num(target)
+        return f0
+
     def get_f0_official_crepe_computation(
         self,
         x,
@@ -268,6 +313,8 @@ class VC(object):
         f0_method,
         filter_radius,
         crepe_hop_length,
+        fcpe_hop_length,
+        fcpe_threshold,
         inp_f0=None,
     ):
         global input_audio_path2wav
@@ -318,6 +365,10 @@ class VC(object):
         elif f0_method == "mangio-crepe-tiny":
             f0 = self.get_f0_crepe_computation(
                 x, f0_min, f0_max, p_len, crepe_hop_length, "tiny"
+            )
+        elif f0_method == "fcpe":
+            f0 = self.get_f0_fcpe_computation(
+                x, f0_min, f0_max, p_len, fcpe_hop_length, fcpe_threshold
             )
         elif f0_method == "rmvpe":
             if hasattr(self, "model_rmvpe") == False:
@@ -492,6 +543,8 @@ class VC(object):
         version,
         protect,
         crepe_hop_length,
+        fcpe_hop_length,
+        fcpe_threshold,
         f0_file=None,
     ):
         if (
@@ -554,6 +607,8 @@ class VC(object):
                 f0_method,
                 filter_radius,
                 crepe_hop_length,
+                fcpe_hop_length,
+                fcpe_threshold,
                 inp_f0,
             )
             pitch = pitch[:p_len]

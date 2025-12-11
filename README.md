@@ -37,8 +37,28 @@ pip install -r requirements.txt
 git pull
 ```
 
-For colab users, simply click `Runtime` in the top navigation bar of the colab notebook and `Disconnect and delete runtime` in the dropdown menu. 
+For colab users, simply click `Runtime` in the top navigation bar of the colab notebook and `Disconnect and delete runtime` in the dropdown menu.
 Then follow the instructions in the notebook to run the webui.
+
+## Download the latest files as a zip
+
+If you want to quickly download the updated repository files (без тяжёлых моделей и выходных данных), use the helper script:
+
+```bash
+python scripts/package_updated_files.py
+```
+
+The archive will be saved to `dist/aisingers_updated.zip`. To include the `rvc_models` and `mdxnet_models` folders as well, run:
+
+```bash
+python scripts/package_updated_files.py --include-models
+```
+
+If you need absolutely everything (без пропусков моделей и выходных данных), use:
+
+```bash
+python scripts/package_updated_files.py --include-all
+```
 
 ## Colab notebook
 
