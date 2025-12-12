@@ -1,22 +1,28 @@
-deemix
+# Core dependencies
 fairseq==0.12.2
-faiss-cpu==1.7.3
+faiss-cpu==1.7.4
 ffmpeg-python>=0.2.0
-gradio==3.39.0
-lib==4.0.0
-librosa==0.9.1
-numpy==1.23.5
-onnxruntime_gpu
+
+gradio==4.44.1
+librosa==0.10.2.post1
+numpy==1.26.4
+onnxruntime-gpu==1.16.3  # CUDA 11.8 build; 1.17+ switches to CUDA 12.x
 praat-parselmouth>=0.4.2
-pedalboard==0.7.7
+pedalboard==0.8.8
 pydub==0.25.1
-pyworld==0.3.4
-Requests==2.31.0
-scipy==1.11.1
+pyworld==0.3.1
+requests>=2.31.0,<3
+scipy==1.11.4
 soundfile==0.12.1
+sox==1.5.0
+torchcrepe==0.0.24
+tqdm==4.66.4
+yt-dlp==2024.10.22
+
+# CUDA 11.8 builds; keep the find-links in sync with torch version above
 --find-links https://download.pytorch.org/whl/torch_stable.html
 torch==2.0.1+cu118
-torchcrepe==0.0.20
-tqdm==4.65.0
-yt_dlp==2023.7.6
-sox==1.4.1
+
+# Optional tooling
+# deemix is distributed via third-party indexes and may require manual setup
+# https://github.com/Bockiii/deemix
