@@ -1,6 +1,6 @@
 # Colab / T4 stack (2025)
-# Python 3.12 + CUDA 12.x
-# RVC / Gradio 4.x / FCPE compatible
+# Python 3.10-3.11 + CUDA 12.x
+# RVC / Gradio 5.x / FCPE compatible
 
 # Core audio / math
 numpy==1.26.4
@@ -23,10 +23,16 @@ fairseq==0.12.2; python_version < "3.12"
 fairseq @ git+https://github.com/facebookresearch/fairseq.git@v0.12.2#egg=fairseq; python_version >= "3.12"
 
 # UI / Utils
-gradio==4.44.1
+gradio>=5.0.0,<6
 requests>=2.31.0,<3
 tqdm==4.66.4
 yt-dlp>=2024.10.22
+gdown>=5.2.0
+mega.py>=1.0.8
+pyngrok>=7.1.0
+
+# Data prep
+audio-slicer>=1.0.1
 
 # ONNX Runtime (GPU)
 onnxruntime-gpu>=1.17.0
