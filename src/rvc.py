@@ -1,9 +1,10 @@
+from functools import lru_cache
 from multiprocessing import cpu_count
 from pathlib import Path
 
 import torch
-from fairseq import checkpoint_utils
 from scipy.io import wavfile
+from transformers import AutoFeatureExtractor, HubertModel
 
 from infer_pack.models import (
     SynthesizerTrnMs256NSFsid,
@@ -15,6 +16,100 @@ from my_utils import load_audio
 from vc_infer_pipeline import VC
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+_hubert_cache = {}
+
+
+def _resolve_model_path(model_path: str):
+    if Path(model_path).is_file():
+        print(
+            f"HuBERT path '{model_path}' is a checkpoint file; defaulting to 'facebook/hubert-base-ls960'."
+        )
+        return "facebook/hubert-base-ls960"
+    return model_path
+
+
+@lru_cache(maxsize=None)
+def _load_feature_extractor(model_path: str):
+    model_path = _resolve_model_path(model_path)
+    return AutoFeatureExtractor.from_pretrained(model_path)
+
+
+def _cached_hubert_model(model_path: str, device: str, is_half: bool):
+    model_path = _resolve_model_path(model_path)
+    cache_key = (model_path, device, is_half)
+    if cache_key in _hubert_cache:
+        return _hubert_cache[cache_key]
+
+    hubert_model = HubertModel.from_pretrained(model_path)
+    hubert_model = hubert_model.to(device)
+    hubert_model = hubert_model.half() if is_half else hubert_model.float()
+    hubert_model.eval()
+    _hubert_cache[cache_key] = hubert_model
+    return hubert_model
+
+
+class TransformersHubertWrapper(torch.nn.Module):
+    def __init__(self, model_path: str, device: str, is_half: bool):
+        super().__init__()
+        self.device = device
+        self.is_half = is_half
+        self.feature_extractor = _load_feature_extractor(model_path)
+        self.model = _cached_hubert_model(model_path, device, is_half)
+        self.final_proj = self._init_final_proj()
+
+    def _init_final_proj(self):
+        hidden_size = self.model.config.hidden_size
+        final_dim = getattr(self.model.config, "final_dim", hidden_size)
+        if final_dim == hidden_size:
+            return torch.nn.Identity()
+
+        projection = torch.nn.Linear(hidden_size, final_dim, bias=False)
+        with torch.no_grad():
+            projection.weight.zero_()
+            diag = min(hidden_size, final_dim)
+            projection.weight[:diag, :diag] = torch.eye(diag)
+        projection = projection.to(self.device)
+        if self.is_half:
+            projection = projection.half()
+        return projection
+
+    def extract_features(self, source, padding_mask=None, output_layer=None):
+        attention_mask = None
+        if padding_mask is not None:
+            attention_mask = (~padding_mask).long().to(self.device)
+
+        # Transformers processors normalize inputs to match pretraining expectations.
+        processed = self.feature_extractor(
+            source.squeeze(0).cpu().float().numpy(),
+            sampling_rate=16000,
+            return_tensors="pt",
+            padding=True,
+        )
+
+        input_values = processed.input_values.to(self.device)
+        if attention_mask is None and "attention_mask" in processed:
+            attention_mask = processed.attention_mask.to(self.device)
+        if self.is_half:
+            input_values = input_values.half()
+        else:
+            input_values = input_values.float()
+
+        outputs = self.model(
+            input_values,
+            attention_mask=attention_mask,
+            output_hidden_states=True,
+            return_dict=True,
+        )
+        hidden_states = outputs.hidden_states or ()
+
+        if output_layer is not None and output_layer < len(hidden_states):
+            features = hidden_states[output_layer]
+        else:
+            features = outputs.last_hidden_state
+
+        return (features,)
 
 
 class Config:
@@ -97,17 +192,7 @@ class Config:
 
 
 def load_hubert(device, is_half, model_path):
-    models, saved_cfg, task = checkpoint_utils.load_model_ensemble_and_task([model_path], suffix='', )
-    hubert = models[0]
-    hubert = hubert.to(device)
-
-    if is_half:
-        hubert = hubert.half()
-    else:
-        hubert = hubert.float()
-
-    hubert.eval()
-    return hubert
+    return TransformersHubertWrapper(model_path, device, is_half)
 
 
 def get_vc(device, is_half, config, model_path):
