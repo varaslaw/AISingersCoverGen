@@ -22,6 +22,7 @@ WebUI is under constant development and testing, but you can try it out right no
 - Reverb Control for AI main vocals
 - Local network sharing option for webui
 - Extra RVC options - filter_radius, rms_mix_rate, protect
+- HuBERT loader now uses Hugging Face Transformers with cached downloads (no fairseq dependency)
 - Local file upload via file browser option
 - Upload of locally trained RVC v2 models via WebUI
 - Pitch detection method control, e.g. rmvpe/mangio-crepe

@@ -18,9 +18,8 @@ pedalboard>=0.9.19
 faiss-cpu>=1.13.1
 torchcrepe==0.0.24
 
-# fairseq (HuBERT)
-fairseq==0.12.2; python_version < "3.12"
-fairseq @ git+https://github.com/facebookresearch/fairseq.git@v0.12.2#egg=fairseq; python_version >= "3.12"
+# HuBERT (Transformers)
+transformers>=4.44.2
 
 # UI / Utils
 gradio>=5.0.0,<6
