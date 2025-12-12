@@ -76,7 +76,7 @@ For those who want to run this locally, follow the setup guide below.
 
 ### Install Git and Python
 
-Follow the instructions [here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) to install Git on your computer. Also follow this [guide](https://realpython.com/installing-python/) to install Python **VERSION 3.10 or 3.11** if you haven't already. The refreshed dependency stack in `requirements.txt` is pinned for these versions and CUDA 11.8 wheels; older Python versions are no longer supported.
+Follow the instructions [here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) to install Git on your computer. Also follow this [guide](https://realpython.com/installing-python/) to install Python **VERSION 3.10 or 3.11** if you haven't already. The refreshed dependency stack in `requirements.txt` is validated on these versions and assumes CUDA 12.x runtimes (matching 2025 Google Colab builds); older Python versions are no longer supported.
 
 ### Install ffmpeg
 
@@ -90,7 +90,7 @@ Follow the instructions [here](https://www.tutorialexample.com/a-step-guide-to-i
 
 Open a command line window and run these commands to clone this entire repository and install the additional dependencies required.
 
-> **Note:** The bundled `torch==2.0.1+cu118`/`onnxruntime-gpu==1.16.3` wheels target CUDA 11.8. If you need CUDA 12.x, upgrade PyTorch and ONNX Runtime together and keep the `--find-links` mirror in sync.
+> **Note:** Install PyTorch/ONNX Runtime builds that match your CUDA runtime. Colab's current images ship CUDA 12.x, so the default `pip install -r requirements.txt` flow will pull the correct wheels. If you are on CUDA 11.8, explicitly pin the corresponding torch/onnxruntime-gpu wheels before installing the rest of the dependencies.
 
 ```
 git clone https://github.com/SociallyIneptWeeb/AICoverGen
