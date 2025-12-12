@@ -5,12 +5,36 @@ import queue
 import threading
 import warnings
 
-import librosa
 import numpy as np
-import onnxruntime as ort
 import soundfile as sf
 import torch
 from tqdm import tqdm
+
+from my_utils import optional_import
+
+librosa = optional_import(
+    "librosa",
+    "MDX source separation",
+    "Install optional audio extras from requirements-optional.txt or `pip install librosa==0.10.2.post1`.",
+    raise_error=False,
+)
+ort = optional_import(
+    "onnxruntime",
+    "MDX source separation",
+    "Install either `onnxruntime>=1.17.0` (CPU) or `onnxruntime-gpu>=1.17.0` depending on your environment.",
+    raise_error=False,
+)
+
+
+def _ensure_mdx_dependencies():
+    if librosa is None:
+        raise ImportError(
+            "MDX source separation requires `librosa`. Install the optional audio extras (requirements-optional.txt)."
+        )
+    if ort is None:
+        raise ImportError(
+            "MDX source separation requires ONNX Runtime. Install either `onnxruntime>=1.17.0` or `onnxruntime-gpu>=1.17.0`."
+        )
 
 warnings.filterwarnings("ignore")
 stem_naming = {'Vocals': 'Instrumental', 'Other': 'Instruments', 'Instrumental': 'Vocals', 'Drums': 'Drumless', 'Bass': 'Bassless'}
@@ -63,6 +87,7 @@ class MDX:
     DEFAULT_PROCESSOR = 0
 
     def __init__(self, model_path: str, params: MDXModel, processor=DEFAULT_PROCESSOR):
+        _ensure_mdx_dependencies()
 
         # Set the device and the provider (CPU or CUDA)
         self.device = torch.device(f'cuda:{processor}') if processor >= 0 else torch.device('cpu')
@@ -236,6 +261,7 @@ class MDX:
 
 
 def run_mdx(model_params, output_dir, model_path, filename, exclude_main=False, exclude_inversion=False, suffix=None, invert_suffix=None, denoise=False, keep_orig=True, m_threads=2):
+    _ensure_mdx_dependencies()
     device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
 
     if device.type == "cuda":

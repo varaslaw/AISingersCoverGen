@@ -31,10 +31,12 @@ WebUI is under constant development and testing, but you can try it out right no
 
 ## Update AICoverGen to latest version
 
-Install and pull any new requirements and changes by opening a command line window in the `AISingersCoverGen` directory and running the following commands.
+Install and pull any new requirements and changes by opening a command line window in the `AISingersCoverGen` directory and running the following commands. The default `requirements.txt` uses the CPU ONNX Runtime build; GPU users can swap in `requirements-gpu.txt`. Optional helpers such as Mega.nz downloads or librosa utilities live in `requirements-optional.txt`.
 
 ```
 pip install -r requirements.txt
+# or: pip install -r requirements-gpu.txt
+# optional extras: pip install -r requirements-optional.txt
 git pull
 ```
 
@@ -89,12 +91,14 @@ Follow the instructions [here](https://www.tutorialexample.com/a-step-guide-to-i
 
 Open a command line window and run these commands to clone this entire repository and install the additional dependencies required.
 
-> **Note:** Install PyTorch/ONNX Runtime builds that match your CUDA runtime. Colab's current images ship CUDA 12.x, so the default `pip install -r requirements.txt` flow will pull the correct wheels. If you are on CUDA 11.8, explicitly pin the corresponding torch/onnxruntime-gpu wheels before installing the rest of the dependencies.
+> **Note:** Install PyTorch/ONNX Runtime builds that match your CUDA runtime. Colab's current images ship CUDA 12.x, so the default `pip install -r requirements-gpu.txt` flow will pull the correct wheels for NVIDIA GPUs. If you are on CUDA 11.8, explicitly pin the corresponding torch/onnxruntime-gpu wheels before installing the rest of the dependencies. CPU-only installs should use `requirements.txt`.
 
 ```
 git clone https://github.com/varaslaw/AISingersCoverGen
 cd AISingersCoverGen
-pip install -r requirements.txt
+pip install -r requirements.txt  # CPU/default stack
+# or: pip install -r requirements-gpu.txt  # NVIDIA GPU stack
+# optional extras: pip install -r requirements-optional.txt  # Mega.nz/librosa helpers
 ```
 
 ### Download required models

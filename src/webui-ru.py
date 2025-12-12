@@ -8,10 +8,10 @@ import socket
 import time
 import gradio as gr
 import gdown
-from mega import Mega
 import requests
 
 from main import song_cover_pipeline
+from my_utils import optional_import
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -22,7 +22,25 @@ mdxnet_models_dir = os.path.join(BASE_DIR, 'mdxnet_models')
 rvc_models_dir = os.path.join(BASE_DIR, 'rvc_models')
 output_dir = os.path.join(BASE_DIR, 'song_output')
 
-m = Mega()
+Mega = optional_import(
+    "mega",
+    "Mega.nz downloads",
+    "Install optional download extras from requirements-optional.txt or `pip install mega.py==1.0.8 tenacity==8.2.3`.",
+    raise_error=False,
+)
+m = None
+
+
+def get_mega_client():
+    if Mega is None:
+        raise gr.Error(
+            "Для загрузки с Mega.nz установите дополнительные зависимости (requirements-optional.txt)."
+        )
+
+    global m
+    if m is None:
+        m = Mega()
+    return m
 
 def get_current_models(models_dir):
     models_list = os.listdir(models_dir)
@@ -102,7 +120,8 @@ def download_online_model(url, dir_name, progress=gr.Progress()):
         if 'drive.google.com' in url:
             gdown.download(url, zip_name, quiet=False)
         elif 'mega.nz' in url:
-            m.download_url(url, dest_filename=zip_name)
+            mega_client = get_mega_client()
+            mega_client.download_url(url, dest_filename=zip_name)
         elif 'pixeldrain.com' in url:
             url = f'https://pixeldrain.com/api/file/{zip_name}'
             urllib.request.urlretrieve(url, zip_name)
