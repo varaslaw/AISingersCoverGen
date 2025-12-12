@@ -6,6 +6,7 @@ import zipfile
 from argparse import ArgumentParser
 
 import gradio as gr
+import torch
 
 from main import song_cover_pipeline
 
@@ -25,6 +26,18 @@ def get_current_models(models_dir):
 def update_models_list():
     models_l = get_current_models(rvc_models_dir)
     return gr.Dropdown.update(choices=models_l)
+
+
+def get_device_choices():
+    devices = ['auto', 'cpu']
+    if torch.cuda.is_available():
+        devices.extend([f'cuda:{i}' for i in range(torch.cuda.device_count())])
+    if torch.backends.mps.is_available():
+        devices.append('mps')
+    return devices
+
+
+HUBERT_BACKEND_CHOICES = ['auto', 'fairseq', 'torchaudio', 'transformers']
 
 
 def load_public_models():
@@ -201,6 +214,11 @@ if __name__ == '__main__':
                     filter_radius = gr.Slider(0, 7, value=3, step=1, label='Filter radius', info='If >=3: apply median filtering median filtering to the harvested pitch results. Can reduce breathiness')
                     rms_mix_rate = gr.Slider(0, 1, value=0.25, label='RMS mix rate', info="Control how much to mimic the original vocal's loudness (0) or a fixed loudness (1)")
                     protect = gr.Slider(0, 0.5, value=0.33, label='Protect rate', info='Protect voiceless consonants and breath sounds. Set to 0.5 to disable.')
+                with gr.Row():
+                    device_choice = gr.Dropdown(get_device_choices(), value='auto', label='Compute device', info='Auto selects a GPU if available, otherwise falls back to CPU (slower).')
+                    backend_choice = gr.Dropdown(HUBERT_BACKEND_CHOICES, value='auto', label='HuBERT backend', info='Choose the encoder backend for feature extraction.')
+                    encoder_type = gr.Textbox(value='', label='Encoder type override', placeholder='Optional override; leave blank to use backend default')
+                with gr.Row():
                     with gr.Column():
                         f0_method = gr.Dropdown(['rmvpe', 'mangio-crepe'], value='rmvpe', label='Pitch detection algorithm', info='Best option is rmvpe (clarity in vocals), then mangio-crepe (smoother vocals)')
                         crepe_hop_length = gr.Slider(32, 320, value=128, step=1, visible=False, label='Crepe hop length', info='Lower values leads to longer conversions and higher risk of voice cracks, but better pitch accuracy.')
@@ -235,12 +253,12 @@ if __name__ == '__main__':
                                inputs=[song_input, rvc_model, pitch, keep_files, is_webui, main_gain, backup_gain,
                                        inst_gain, index_rate, filter_radius, rms_mix_rate, f0_method, crepe_hop_length,
                                        protect, pitch_all, reverb_rm_size, reverb_wet, reverb_dry, reverb_damping,
-                                       output_format],
+                                       output_format, device_choice, backend_choice, encoder_type],
                                outputs=[ai_cover])
-            clear_btn.click(lambda: [0, 0, 0, 0, 0.5, 3, 0.25, 0.33, 'rmvpe', 128, 0, 0.15, 0.2, 0.8, 0.7, 'mp3', None],
+            clear_btn.click(lambda: [0, 0, 0, 0, 0.5, 3, 0.25, 0.33, 'rmvpe', 128, 0, 0.15, 0.2, 0.8, 0.7, 'mp3', 'auto', 'auto', ''],
                             outputs=[pitch, main_gain, backup_gain, inst_gain, index_rate, filter_radius, rms_mix_rate,
                                      protect, f0_method, crepe_hop_length, pitch_all, reverb_rm_size, reverb_wet,
-                                     reverb_dry, reverb_damping, output_format, ai_cover])
+                                     reverb_dry, reverb_damping, output_format, device_choice, backend_choice, encoder_type, ai_cover])
 
         # Download tab
         with gr.Tab('Download model'):

@@ -9,6 +9,7 @@ import time
 import gradio as gr
 import gdown
 import requests
+import torch
 
 from main import song_cover_pipeline
 from my_utils import optional_import
@@ -22,24 +23,45 @@ mdxnet_models_dir = os.path.join(BASE_DIR, 'mdxnet_models')
 rvc_models_dir = os.path.join(BASE_DIR, 'rvc_models')
 output_dir = os.path.join(BASE_DIR, 'song_output')
 
-Mega = optional_import(
-    "mega",
-    "Mega.nz downloads",
-    "Install optional download extras from requirements-optional.txt or `pip install mega.py==1.0.8 tenacity==8.2.3`.",
-    raise_error=False,
-)
+Mega = None
+_mega_import_error = None
 m = None
 
 
-def get_mega_client():
-    if Mega is None:
-        raise gr.Error(
-            "Для загрузки с Mega.nz установите дополнительные зависимости (requirements-optional.txt)."
-        )
+def get_device_choices():
+    devices = ['auto', 'cpu']
+    if torch.cuda.is_available():
+        devices.extend([f'cuda:{i}' for i in range(torch.cuda.device_count())])
+    if torch.backends.mps.is_available():
+        devices.append('mps')
+    return devices
 
-    global m
+
+HUBERT_BACKEND_CHOICES = ['auto', 'fairseq', 'torchaudio', 'transformers']
+
+
+def get_mega_client():
+    global Mega, _mega_import_error, m
+
+    if Mega is None and _mega_import_error is None:
+        try:
+            Mega = optional_import(
+                "mega",
+                "Mega.nz downloads",
+                "Install optional download extras from requirements-optional.txt or `pip install mega.py==1.0.8 tenacity==8.2.3`.",
+            )
+        except ImportError as exc:
+            _mega_import_error = str(exc)
+
+    if Mega is None:
+        message = _mega_import_error or "Для загрузки с Mega.nz установите дополнительные зависимости (requirements-optional.txt)."
+        raise gr.Error(message)
+
     if m is None:
-        m = Mega()
+        try:
+            m = Mega()
+        except Exception as exc:  # pragma: no cover - runtime dependency
+            raise gr.Error(f"Не удалось инициализировать Mega клиента: {exc}")
     return m
 
 def get_current_models(models_dir):
@@ -266,6 +288,10 @@ if __name__ == '__main__':
                         rms_mix_rate = gr.Slider(0, 1, value=0.25, label='Скорость смешивания RMS', info="0 — оригинальная громкость, 1 — фиксированная громкость")
                         protect = gr.Slider(0, 0.5, value=0.33, label='Скорость защиты', info='Защищает глухие согласные и звуки дыхания. 0.5 — отключить')
                     with gr.Row():
+                        device_choice = gr.Dropdown(get_device_choices(), value='auto', label='Вычислительное устройство', info='Автовыбор использует GPU, если доступен, иначе CPU (медленнее).')
+                        backend_choice = gr.Dropdown(HUBERT_BACKEND_CHOICES, value='auto', label='HuBERT backend', info='Выберите backend энкодера для извлечения признаков.')
+                        encoder_type = gr.Textbox(value='', label='Переопределение encoder type', placeholder='Оставьте пустым для значения по умолчанию backend')
+                    with gr.Row():
                         f0_method = gr.Dropdown(['rmvpe', 'mangio-crepe', 'fcpe'], value='rmvpe', label='Алгоритм определения высоты звука', info='rmvpe — ясный вокал, mangio-crepe — сглаживание, FCPE — быстрая конформерная оценка высоты')
                         crepe_hop_length = gr.Slider(32, 320, value=128, step=1, visible=False, label='Длина хопа Crepe', info='Низкие значения улучшают точность, но замедляют конверсию (mangio-crepe)')
                         fcpe_hop_length = gr.Slider(32, 320, value=128, step=1, visible=False, label='Длина хопа FCPE', info='Шаг анализа высоты для FCPE. Меньше — точнее, но дольше')
@@ -300,12 +326,12 @@ if __name__ == '__main__':
                                    inputs=[song_input, rvc_model, pitch, keep_files, is_webui, main_gain, backup_gain,
                                            inst_gain, index_rate, filter_radius, rms_mix_rate, f0_method, crepe_hop_length,
                                            fcpe_hop_length, fcpe_threshold, protect, pitch_all, reverb_rm_size, reverb_wet, reverb_dry, reverb_damping,
-                                           output_format],
+                                           output_format, device_choice, backend_choice, encoder_type],
                                    outputs=[ai_cover])
-                clear_btn.click(lambda: [0, 0, 0, 0, 0.5, 3, 0.25, 0.33, 'rmvpe', 128, 128, 0.05, 0, 0.15, 0.2, 0.8, 0.7, 'mp3', None],
+                clear_btn.click(lambda: [0, 0, 0, 0, 0.5, 3, 0.25, 0.33, 'rmvpe', 128, 128, 0.05, 0, 0.15, 0.2, 0.8, 0.7, 'mp3', 'auto', 'auto', ''],
                                 outputs=[pitch, main_gain, backup_gain, inst_gain, index_rate, filter_radius, rms_mix_rate,
                                          protect, f0_method, crepe_hop_length, fcpe_hop_length, fcpe_threshold, pitch_all, reverb_rm_size, reverb_wet,
-                                         reverb_dry, reverb_damping, output_format, ai_cover])
+                                         reverb_dry, reverb_damping, output_format, device_choice, backend_choice, encoder_type, ai_cover])
 
             with gr.Tab('Скачать модель'):
 
