@@ -1,3 +1,4 @@
+import importlib.util
 from functools import lru_cache
 from multiprocessing import cpu_count
 from pathlib import Path
@@ -21,23 +22,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 _hubert_cache = {}
 
 
-def _resolve_model_path(model_path: str):
-    if Path(model_path).is_file():
-        print(
-            f"HuBERT path '{model_path}' is a checkpoint file; defaulting to 'facebook/hubert-base-ls960'."
-        )
-        return "facebook/hubert-base-ls960"
-    return model_path
-
-
 @lru_cache(maxsize=None)
-def _load_feature_extractor(model_path: str):
-    model_path = _resolve_model_path(model_path)
-    return AutoFeatureExtractor.from_pretrained(model_path)
+def _load_feature_extractor(model_path: str, normalize: bool):
+    feature_extractor = AutoFeatureExtractor.from_pretrained(model_path)
+    feature_extractor.do_normalize = normalize
+    return feature_extractor
 
 
 def _cached_hubert_model(model_path: str, device: str, is_half: bool):
-    model_path = _resolve_model_path(model_path)
     cache_key = (model_path, device, is_half)
     if cache_key in _hubert_cache:
         return _hubert_cache[cache_key]
@@ -51,11 +43,11 @@ def _cached_hubert_model(model_path: str, device: str, is_half: bool):
 
 
 class TransformersHubertWrapper(torch.nn.Module):
-    def __init__(self, model_path: str, device: str, is_half: bool):
+    def __init__(self, model_path: str, device: str, is_half: bool, normalize_input: bool):
         super().__init__()
         self.device = device
         self.is_half = is_half
-        self.feature_extractor = _load_feature_extractor(model_path)
+        self.feature_extractor = _load_feature_extractor(model_path, normalize_input)
         self.model = _cached_hubert_model(model_path, device, is_half)
         self.final_proj = self._init_final_proj()
 
@@ -80,12 +72,12 @@ class TransformersHubertWrapper(torch.nn.Module):
         if padding_mask is not None:
             attention_mask = (~padding_mask).long().to(self.device)
 
-        # Transformers processors normalize inputs to match pretraining expectations.
         processed = self.feature_extractor(
             source.squeeze(0).cpu().float().numpy(),
             sampling_rate=16000,
             return_tensors="pt",
             padding=True,
+            do_normalize=self.feature_extractor.do_normalize,
         )
 
         input_values = processed.input_values.to(self.device)
@@ -110,6 +102,65 @@ class TransformersHubertWrapper(torch.nn.Module):
             features = outputs.last_hidden_state
 
         return (features,)
+
+
+class FairseqHubertWrapper(torch.nn.Module):
+    def __init__(self, model_path: str, device: str, is_half: bool):
+        super().__init__()
+        from fairseq import checkpoint_utils
+
+        models, _, _ = checkpoint_utils.load_model_ensemble_and_task([str(model_path)])
+        self.model = models[0].to(device)
+        self.device = device
+        self.is_half = is_half
+        if is_half:
+            self.model.half()
+        else:
+            self.model.float()
+        self.model.eval()
+        self.final_proj = getattr(self.model, "final_proj", torch.nn.Identity()).to(device)
+
+    def extract_features(self, source, padding_mask=None, output_layer=None):
+        source = source.to(self.device)
+        if padding_mask is not None:
+            padding_mask = padding_mask.to(self.device)
+        outputs = self.model.extract_features(
+            source,
+            padding_mask=padding_mask,
+            output_layer=output_layer,
+        )
+        if isinstance(outputs, tuple):
+            return outputs
+        return (outputs,)
+
+
+class TorchaudioHubertWrapper(torch.nn.Module):
+    def __init__(self, device: str, is_half: bool):
+        super().__init__()
+        from torchaudio.pipelines import HUBERT_BASE
+
+        self.model = HUBERT_BASE.get_model().to(device)
+        self.device = device
+        self.is_half = is_half
+        if is_half:
+            self.model.half()
+        else:
+            self.model.float()
+        self.model.eval()
+        self.final_proj = getattr(
+            self.model, "final_proj", torch.nn.Identity().to(device)
+        )
+
+    def extract_features(self, source, padding_mask=None, output_layer=None):
+        source = source.to(self.device)
+        if padding_mask is not None:
+            source = source * (~padding_mask).to(self.device)
+        features, _ = self.model.extract_features(source)
+        if output_layer is not None and output_layer < len(features):
+            selected = features[output_layer]
+        else:
+            selected = features[-1]
+        return (selected,)
 
 
 class Config:
@@ -191,8 +242,37 @@ class Config:
         return x_pad, x_query, x_center, x_max
 
 
-def load_hubert(device, is_half, model_path):
-    return TransformersHubertWrapper(model_path, device, is_half)
+def _is_module_available(module_name: str) -> bool:
+    return importlib.util.find_spec(module_name) is not None
+
+
+def _select_backend(backend: str, model_path: str) -> str:
+    if backend != "auto":
+        return backend
+
+    if Path(model_path).is_file():
+        return "fairseq"
+    if _is_module_available("torchaudio"):
+        return "torchaudio"
+    return "transformers"
+
+
+def load_hubert(device, is_half, model_path, backend: str = "auto", encoder_type: str | None = None):
+    selected_backend = _select_backend(backend, model_path)
+    encoder_choice = encoder_type or selected_backend
+    print(f"[HuBERT] Using backend '{selected_backend}' (encoder type '{encoder_choice}')")
+
+    if selected_backend == "fairseq":
+        if not _is_module_available("fairseq"):
+            raise ImportError("fairseq backend selected but fairseq is not installed")
+        return FairseqHubertWrapper(model_path, device, is_half)
+    if selected_backend == "torchaudio":
+        if not _is_module_available("torchaudio"):
+            raise ImportError("torchaudio backend selected but torchaudio is not installed")
+        return TorchaudioHubertWrapper(device, is_half)
+    if selected_backend == "transformers":
+        return TransformersHubertWrapper(model_path, device, is_half, normalize_input=False)
+    raise ValueError(f"Unsupported HuBERT backend: {selected_backend}")
 
 
 def get_vc(device, is_half, config, model_path):
