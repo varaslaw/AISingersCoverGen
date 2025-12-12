@@ -4,6 +4,7 @@ import shutil
 import urllib.request
 import zipfile
 from argparse import ArgumentParser
+import socket
 import time
 import gradio as gr
 import gdown
@@ -223,7 +224,12 @@ if __name__ == '__main__':
                             song_input_file.upload(process_file_upload, inputs=[song_input_file], outputs=[local_file, song_input])
 
                         with gr.Column(scale=3):
-                            record_button = gr.Audio(label='Записать вокал', source="microphone", type="filepath")
+                            record_button = gr.Audio(
+                                label='Записать вокал',
+                                sources=["microphone"],
+                                type="filepath",
+                                streaming=True,
+                            )
                             upload_record_button = gr.Button('Загрузить запись')
                             upload_record_button.click(process_record_upload, inputs=[record_button], outputs=[local_file, song_input])
 
@@ -360,9 +366,30 @@ if __name__ == '__main__':
                 gr.Markdown('**👤 ЗАКАЗАТЬ МОДЕЛЬ НА ЗАКАЗ ТГ:** https://t.me/simbioz_2002')
                 gr.Markdown('**🐣 YouTube Канал:** https://www.youtube.com/@DrawAvatarsTV')
 
+    server_name = None if not args.listen else (args.listen_host or '0.0.0.0')
+    port_host = args.listen_host or ('0.0.0.0' if args.listen else '127.0.0.1')
+    preferred_port = args.listen_port or 7860
+
+    def get_available_port(port, host):
+        check_host = '127.0.0.1' if host in [None, '0.0.0.0'] else host
+
+        if port:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(0.5)
+                if sock.connect_ex((check_host, port)) != 0:
+                    return port
+
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind((host, 0))
+            return sock.getsockname()[1]
+
+    server_port = get_available_port(preferred_port, port_host)
+    if server_port != preferred_port:
+        print(f"[i] Порт {preferred_port} занят. Используется доступный порт {server_port}.")
+
+    app = app.queue()
     app.launch(
         share=args.share_enabled,
-        enable_queue=True,
-        server_name=None if not args.listen else (args.listen_host or '0.0.0.0'),
-        server_port=args.listen_port or 7860,
+        server_name=server_name,
+        server_port=server_port,
     )
