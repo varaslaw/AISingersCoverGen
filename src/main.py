@@ -197,10 +197,24 @@ def get_hash(filepath):
 
 
 def display_progress(message, percent, is_webui, progress=None):
-    if is_webui:
+    if is_webui and progress is not None:
         progress(percent, desc=message)
     else:
         print(message)
+
+
+def validate_audio_input(audio_path, is_webui):
+    if not audio_path:
+        raise_exception('No audio input provided.', is_webui)
+
+    if not os.path.exists(audio_path):
+        raise_exception(f'{audio_path} does not exist.', is_webui)
+
+    if not os.path.isfile(audio_path):
+        raise_exception(f'{audio_path} is not a file.', is_webui)
+
+    if os.path.splitext(audio_path)[1].lower() not in {'.mp3', '.wav'}:
+        raise_exception('Unsupported audio format. Please use an mp3 or wav file.', is_webui)
 
 
 def preprocess_song(song_input, mdx_model_params, song_id, is_webui, input_type, progress=None):
@@ -216,6 +230,7 @@ def preprocess_song(song_input, mdx_model_params, song_id, is_webui, input_type,
         orig_song_path = None
 
     song_output_dir = os.path.join(output_dir, song_id)
+    validate_audio_input(orig_song_path, is_webui)
     orig_song_path = convert_to_stereo(orig_song_path)
 
     display_progress('[~] Separating Vocals from Instrumental...', 0.1, is_webui, progress)
@@ -238,7 +253,7 @@ def voice_change(voice_model, vocals_path, output_path, pitch_change, f0_method,
     if device_message:
         status_message = f"{device_message} {status_message}"
 
-    if progress:
+    if progress is not None:
         display_progress(status_message, 0.45, is_webui, progress)
     else:
         print(status_message)
