@@ -250,7 +250,25 @@ def preprocess_song(song_input, mdx_model_params, song_id, is_webui, input_type,
     return orig_song_path, vocals_path, instrumentals_path, main_vocals_path, backup_vocals_path, main_vocals_dereverb_path
 
 
-def voice_change(voice_model, vocals_path, output_path, pitch_change, f0_method, index_rate, filter_radius, rms_mix_rate, protect, crepe_hop_length, fcpe_hop_length, fcpe_threshold, is_webui, device_preference=None, progress=None):
+def voice_change(
+    voice_model,
+    vocals_path,
+    output_path,
+    pitch_change,
+    f0_method,
+    index_rate,
+    filter_radius,
+    rms_mix_rate,
+    protect,
+    crepe_hop_length,
+    fcpe_hop_length,
+    fcpe_threshold,
+    is_webui,
+    device_preference=None,
+    hubert_backend: str = "auto",
+    encoder_type: str | None = None,
+    progress=None,
+):
     rvc_model_path, rvc_index_path = get_rvc_model(voice_model, is_webui)
     device, is_half, device_message = select_device(device_preference)
     config = Config(device, is_half)
@@ -262,7 +280,13 @@ def voice_change(voice_model, vocals_path, output_path, pitch_change, f0_method,
         display_progress(status_message, 0.45, is_webui, progress)
     else:
         print(status_message)
-    hubert_model = load_hubert(device, config.is_half, os.path.join(rvc_models_dir, 'hubert_base.pt'))
+    hubert_model = load_hubert(
+        device,
+        config.is_half,
+        os.path.join(rvc_models_dir, 'hubert_base.pt'),
+        backend=hubert_backend,
+        encoder_type=encoder_type,
+    )
     cpt, version, net_g, tgt_sr, vc = get_vc(device, config.is_half, config, rvc_model_path)
 
     # convert main vocals
@@ -305,10 +329,14 @@ def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files,
                         is_webui=0, main_gain=0, backup_gain=0, inst_gain=0, index_rate=0.5, filter_radius=3,
                         rms_mix_rate=0.25, f0_method='rmvpe', crepe_hop_length=128, fcpe_hop_length=128,
                         fcpe_threshold=0.05, protect=0.33, pitch_change_all=0, reverb_rm_size=0.15, reverb_wet=0.2,
-                        reverb_dry=0.8, reverb_damping=0.7, output_format='mp3', device_preference='auto', progress=gr.Progress()):
+                        reverb_dry=0.8, reverb_damping=0.7, output_format='mp3', device_preference='auto',
+                        hubert_backend: str = 'auto', encoder_type: str | None = None, progress=gr.Progress()):
     try:
         if not song_input or not voice_model:
             raise_exception('Ensure that the song input field and voice model field is filled.', is_webui)
+
+        if isinstance(encoder_type, str) and encoder_type.strip() == "":
+            encoder_type = None
 
         display_progress('[~] Starting AI Cover Generation Pipeline...', 0, is_webui, progress)
 
@@ -360,7 +388,25 @@ def song_cover_pipeline(song_input, voice_model, pitch_change, keep_files,
 
         if not os.path.exists(ai_vocals_path):
             display_progress('[~] Converting voice using RVC...', 0.5, is_webui, progress)
-            voice_change(voice_model, main_vocals_dereverb_path, ai_vocals_path, pitch_change, f0_method, index_rate, filter_radius, rms_mix_rate, protect, crepe_hop_length, fcpe_hop_length, fcpe_threshold, is_webui, device_preference, progress)
+            voice_change(
+                voice_model,
+                main_vocals_dereverb_path,
+                ai_vocals_path,
+                pitch_change,
+                f0_method,
+                index_rate,
+                filter_radius,
+                rms_mix_rate,
+                protect,
+                crepe_hop_length,
+                fcpe_hop_length,
+                fcpe_threshold,
+                is_webui,
+                device_preference,
+                hubert_backend,
+                encoder_type,
+                progress,
+            )
 
         display_progress('[~] Applying audio effects to Vocals...', 0.8, is_webui, progress)
         ai_vocals_mixed_path = add_audio_effects(ai_vocals_path, reverb_rm_size, reverb_wet, reverb_dry, reverb_damping)
@@ -412,6 +458,8 @@ if __name__ == '__main__':
     parser.add_argument('-rdamp', '--reverb-damping', type=float, default=0.7, help='Reverb damping between 0 and 1')
     parser.add_argument('-oformat', '--output-format', type=str, default='mp3', help='Output format of audio file. mp3 for smaller file size, wav for best quality')
     parser.add_argument('-d', '--device', type=str, default='auto', help='Compute device to use (auto, cpu, or cuda:<id>). Defaults to auto-detection.')
+    parser.add_argument('-eb', '--encoder-backend', type=str, default='auto', choices=['auto', 'fairseq', 'torchaudio', 'transformers'], help='HuBERT encoder backend to use for feature extraction.')
+    parser.add_argument('-et', '--encoder-type', type=str, default=None, help='Optional HuBERT encoder type override.')
     args = parser.parse_args()
 
     rvc_dirname = args.rvc_dirname
@@ -427,5 +475,6 @@ if __name__ == '__main__':
                                      pitch_change_all=args.pitch_change_all,
                                      reverb_rm_size=args.reverb_size, reverb_wet=args.reverb_wetness,
                                      reverb_dry=args.reverb_dryness, reverb_damping=args.reverb_damping,
-                                     output_format=args.output_format, device_preference=args.device)
+                                     output_format=args.output_format, device_preference=args.device,
+                                     hubert_backend=args.encoder_backend, encoder_type=args.encoder_type)
     print(f'[+] Cover generated at {cover_path}')
