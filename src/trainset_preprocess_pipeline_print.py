@@ -11,11 +11,16 @@ exp_dir = sys.argv[4]
 noparallel = sys.argv[5] == "True"
 import numpy as np, os, traceback
 from slicer2 import Slicer
-import librosa, traceback
 from scipy.io import wavfile
 import multiprocessing
-from my_utils import load_audio
+from my_utils import load_audio, optional_import
 import tqdm
+
+librosa = optional_import(
+    "librosa",
+    "Trainset preprocessing",
+    "Install optional audio extras from requirements-optional.txt or `pip install librosa==0.10.2.post1`.",
+)
 
 DoFormant = False
 Quefrency = 1.0

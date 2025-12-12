@@ -1,0 +1,4 @@
+# Optional extras for audio utilities and download helpers
+librosa==0.10.2.post1
+mega.py==1.0.8
+tenacity==8.2.3

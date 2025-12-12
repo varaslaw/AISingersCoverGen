@@ -9,7 +9,6 @@ from contextlib import suppress
 from urllib.parse import urlparse, parse_qs
 
 import gradio as gr
-import librosa
 import numpy as np
 import soundfile as sf
 import sox
@@ -21,6 +20,7 @@ import torch
 
 from mdx import run_mdx
 from rvc import Config, load_hubert, get_vc, rvc_infer
+from my_utils import optional_import
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -163,6 +163,11 @@ def get_audio_paths(song_dir):
 
 
 def convert_to_stereo(audio_path):
+    librosa = optional_import(
+        "librosa",
+        "Stereo conversion",
+        "Install optional audio extras from requirements-optional.txt or `pip install librosa==0.10.2.post1`.",
+    )
     wave, sr = librosa.load(audio_path, mono=False, sr=44100)
 
     # check if mono

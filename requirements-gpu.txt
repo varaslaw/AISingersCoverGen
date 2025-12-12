@@ -1,0 +1,5 @@
+# GPU-focused install. Installs the shared stack plus the GPU ONNX Runtime wheel.
+-r requirements-core.txt
+onnxruntime-gpu>=1.17.0
+
+# Optional extras for specific features live in requirements-optional.txt

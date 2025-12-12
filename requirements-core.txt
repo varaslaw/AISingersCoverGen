@@ -1,0 +1,38 @@
+# Colab / GPU stack (2025)
+# Tested with Python 3.10–3.12 + CUDA 12.x
+# Gradio 5.23.x to avoid APIInfoParseError and legacy UI breakage
+
+# Core audio / math
+numpy==1.26.4
+scipy==1.11.4
+soundfile==0.12.1
+pydub==0.25.1
+ffmpeg-python>=0.2.0
+sox==1.5.0
+praat-parselmouth>=0.4.3
+pyworld>=0.3.5
+pedalboard>=0.9.19
+
+# RVC / Voice
+faiss-cpu==1.9.0
+torchcrepe==0.0.24
+
+# HuBERT (Transformers)
+transformers==4.45.2
+
+# UI / Utils
+gradio==5.23.1
+requests>=2.31.0,<3
+tqdm==4.66.4
+yt-dlp>=2024.10.22
+gdown>=5.2.0
+pyngrok>=7.1.0
+pandas>=2.2.2
+
+# Data prep
+audio-slicer>=1.0.1
+
+# Torch (use environment CUDA build where available)
+torch
+torchaudio
+torchvision
