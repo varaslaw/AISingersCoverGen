@@ -42,22 +42,22 @@ Then follow the instructions in the notebook to run the webui.
 
 ## Download the latest files as a zip
 
-If you want to quickly download the updated repository files (без тяжёлых моделей и выходных данных), use the helper script:
+If you want to quickly download the updated repository files as a full copy of the code (без `.git` и кэшей), run:
 
 ```bash
 python scripts/package_updated_files.py
 ```
 
-The archive will be saved to `dist/aisingers_updated.zip`. To include the `rvc_models` and `mdxnet_models` folders as well, run:
+The archive will be saved to `dist/aisingers_updated.zip`. To build a lighter archive without heavy folders (`rvc_models`, `mdxnet_models`, `song_output`, `uploads`, `images`), switch the mode:
 
 ```bash
-python scripts/package_updated_files.py --include-models
+python scripts/package_updated_files.py --mode light
 ```
 
-If you need absolutely everything (без пропусков моделей и выходных данных), use:
+You can still include just the model folders in light mode with:
 
 ```bash
-python scripts/package_updated_files.py --include-all
+python scripts/package_updated_files.py --mode light --include-models
 ```
 
 ## Colab notebook
