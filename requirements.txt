@@ -1,12 +1,12 @@
-# Core dependencies
-fairseq==0.12.2
-faiss-cpu==1.7.4
-ffmpeg-python>=0.2.0
+# Colab (T4) stack: Python 3.12 + CUDA 12.x
+# Do NOT pin cu118 wheels here.
 
+# Core
+fairseq==0.12.2
+ffmpeg-python>=0.2.0
 gradio==4.44.1
 librosa==0.10.2.post1
 numpy==1.26.4
-onnxruntime-gpu==1.16.3  # CUDA 11.8 build; 1.17+ switches to CUDA 12.x
 praat-parselmouth>=0.4.2
 pedalboard==0.8.8
 pydub==0.25.1
@@ -19,6 +19,13 @@ torchcrepe==0.0.24
 tqdm==4.66.4
 yt-dlp==2024.10.22
 
-# CUDA 11.8 builds; keep the find-links in sync with torch version below
---find-links https://download.pytorch.org/whl/torch_stable.html
-torch==2.0.1+cu118
+# FAISS (allow pip to choose compatible wheel)
+faiss-cpu
+
+# ONNX Runtime GPU (Py3.12-compatible; CUDA 12.x builds)
+onnxruntime-gpu>=1.17.0
+
+# Torch: let Colab provide the correct CUDA build (already installed)
+torch
+torchaudio
+torchvision
