@@ -6,6 +6,7 @@ import zipfile
 from argparse import ArgumentParser
 
 import gradio as gr
+import torch
 
 from main import song_cover_pipeline
 
@@ -20,6 +21,15 @@ def get_current_models(models_dir):
     models_list = os.listdir(models_dir)
     items_to_remove = ['hubert_base.pt', 'MODELS.txt', 'public_models.json', 'rmvpe.pt']
     return [item for item in models_list if item not in items_to_remove]
+
+
+def get_device_choices():
+    devices = ['auto', 'cpu']
+    if torch.cuda.is_available():
+        devices.extend([f'cuda:{i}' for i in range(torch.cuda.device_count())])
+    if torch.backends.mps.is_available():
+        devices.append('mps')
+    return devices
 
 
 def update_models_list():
@@ -192,6 +202,9 @@ if __name__ == '__main__':
                     with gr.Column():
                         pitch = gr.Slider(-20, 20, value=0, step=1, label='Pitch Change (Vocals ONLY)', info='Generally, use 12 for male to female conversions and -12 for vice-versa. (Octaves)')
                         pitch_all = gr.Slider(-12, 12, value=0, step=1, label='Overall Pitch Change', info='Changes pitch/key of vocals and instrumentals together. Altering this slightly reduces sound quality. (Semitones)')
+                    with gr.Column():
+                        device_choice = gr.Dropdown(get_device_choices(), value='auto', label='Compute device', info='Auto selects a GPU if available, otherwise falls back to CPU (slower).')
+                        device_hint = gr.Markdown('The selected device will be shown during conversion.')
                     show_file_upload_button.click(swap_visibility, outputs=[file_upload_col, yt_link_col, song_input, local_file])
                     show_yt_link_button.click(swap_visibility, outputs=[yt_link_col, file_upload_col, song_input, local_file])
 
@@ -235,12 +248,12 @@ if __name__ == '__main__':
                                inputs=[song_input, rvc_model, pitch, keep_files, is_webui, main_gain, backup_gain,
                                        inst_gain, index_rate, filter_radius, rms_mix_rate, f0_method, crepe_hop_length,
                                        protect, pitch_all, reverb_rm_size, reverb_wet, reverb_dry, reverb_damping,
-                                       output_format],
+                                       output_format, device_choice],
                                outputs=[ai_cover])
-            clear_btn.click(lambda: [0, 0, 0, 0, 0.5, 3, 0.25, 0.33, 'rmvpe', 128, 0, 0.15, 0.2, 0.8, 0.7, 'mp3', None],
+            clear_btn.click(lambda: [0, 0, 0, 0, 0.5, 3, 0.25, 0.33, 'rmvpe', 128, 0, 0.15, 0.2, 0.8, 0.7, 'mp3', 'auto', None],
                             outputs=[pitch, main_gain, backup_gain, inst_gain, index_rate, filter_radius, rms_mix_rate,
                                      protect, f0_method, crepe_hop_length, pitch_all, reverb_rm_size, reverb_wet,
-                                     reverb_dry, reverb_damping, output_format, ai_cover])
+                                     reverb_dry, reverb_damping, output_format, device_choice, ai_cover])
 
         # Download tab
         with gr.Tab('Download model'):

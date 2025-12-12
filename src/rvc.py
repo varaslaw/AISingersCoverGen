@@ -27,7 +27,7 @@ class Config:
         self.x_pad, self.x_query, self.x_center, self.x_max = self.device_config()
 
     def device_config(self) -> tuple:
-        if torch.cuda.is_available():
+        if self.device.startswith("cuda") and torch.cuda.is_available():
             i_device = int(self.device.split(":")[-1])
             self.gpu_name = torch.cuda.get_device_name(i_device)
             if (
@@ -62,13 +62,14 @@ class Config:
                     strr = f.read().replace("3.7", "3.0")
                 with open(BASE_DIR / "src" / "trainset_preprocess_pipeline_print.py", "w") as f:
                     f.write(strr)
-        elif torch.backends.mps.is_available():
+        elif self.device == "mps" and torch.backends.mps.is_available():
             print("No supported N-card found, use MPS for inference")
             self.device = "mps"
         else:
-            print("No supported N-card found, use CPU for inference")
+            if self.device != "cpu":
+                print("No supported N-card found, use CPU for inference")
             self.device = "cpu"
-            self.is_half = True
+            self.is_half = False
 
         if self.n_cpu == 0:
             self.n_cpu = cpu_count()
