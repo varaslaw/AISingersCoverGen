@@ -3,30 +3,36 @@ Preferred stack: Python <=3.11 + CUDA 11.8.
 For Python 3.12/CUDA 12.x, swap onnxruntime-gpu to >=1.17.0 and use torch cu121 wheels.
 """
 
-# Core dependencies (CUDA 11.8 baseline)
-fairseq==0.12.2
-faiss-cpu==1.7.4
+# Keep pip <24.1 for fairseq 0.12.x metadata handling on Python 3.10/3.11.
+# CUDA 11.8 users can still pin torch via the cu118 index below; CUDA 12.x/Colab users stay on default wheels.
+#   pip install pip<24.1 && pip install torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118
+# Fairseq (Hubert) options:
+#   - Python <3.12: fairseq 0.12.2 wheel still works with pip<24.1
+#   - Python >=3.12: install from source to avoid the metadata blocker
+fairseq==0.12.2; python_version < "3.12"
+fairseq @ git+https://github.com/facebookresearch/fairseq.git@v0.12.2#egg=fairseq; python_version >= "3.12"
+faiss-cpu>=1.13.1
 ffmpeg-python>=0.2.0
 
 gradio==4.44.1
 librosa==0.10.2.post1
 numpy==1.26.4
-onnxruntime-gpu==1.16.3  # last CUDA 11.8 build (Python <=3.11)
+onnxruntime-gpu>=1.17.0  # last CUDA 11.8 build is 1.16.3; pin it if you need cu118 specifically
 praat-parselmouth>=0.4.2
-pedalboard==0.8.8
+pedalboard>=0.9.19
 pydub==0.25.1
-pyworld==0.3.1
-requests>=2.31.0,<2.33
+pyworld>=0.3.5
+requests>=2.31.0,<3
 scipy==1.11.4
 soundfile==0.12.1
 sox==1.5.0
 torchcrepe==0.0.24
 tqdm==4.66.4
-yt-dlp==2024.10.22
+yt-dlp>=2024.10.22
 
 # Torch wheels depend on CUDA. cu118 wheels cover Python <=3.11 for this stack.
 --find-links https://download.pytorch.org/whl/torch_stable.html
-torch==2.1.2
+torch
 
 # Optional tooling
 # deemix is distributed via third-party indexes and may require manual setup
