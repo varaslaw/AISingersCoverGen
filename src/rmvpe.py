@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from librosa.filters import mel
+import torchaudio.functional as AF
 
 
 class BiGRU(nn.Module):
@@ -274,15 +274,14 @@ class MelSpectrogram(torch.nn.Module):
         super().__init__()
         n_fft = win_length if n_fft is None else n_fft
         self.hann_window = {}
-        mel_basis = mel(
-            sr=sampling_rate,
-            n_fft=n_fft,
+        mel_basis = AF.melscale_fbanks(
+            n_freqs=n_fft // 2 + 1,
+            f_min=mel_fmin,
+            f_max=mel_fmax,
             n_mels=n_mel_channels,
-            fmin=mel_fmin,
-            fmax=mel_fmax,
-            htk=True,
+            sample_rate=sampling_rate,
+            mel_scale="htk",
         )
-        mel_basis = torch.from_numpy(mel_basis).float()
         self.register_buffer("mel_basis", mel_basis)
         self.n_fft = win_length if n_fft is None else n_fft
         self.hop_length = hop_length
