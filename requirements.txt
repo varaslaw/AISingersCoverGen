@@ -1,12 +1,8 @@
-"""
-Colab / T4 stack
-Python 3.12 + CUDA 12.x
-RVC / Gradio 4.x / FCPE compatible
-"""
+# Colab / T4 stack (2025)
+# Python 3.12 + CUDA 12.x
+# RVC / Gradio 4.x / FCPE compatible
 
-# ===============================
 # Core audio / math
-# ===============================
 numpy==1.26.4
 scipy==1.11.4
 librosa==0.10.2.post1
@@ -18,33 +14,24 @@ praat-parselmouth>=0.4.2
 pyworld>=0.3.5
 pedalboard>=0.9.19
 
-# ===============================
 # RVC / Voice
-# ===============================
 faiss-cpu>=1.13.1
 torchcrepe==0.0.24
 
-# fairseq:
-# - wheels не работают на Python 3.12
-# - ставим из исходников
-fairseq @ git+https://github.com/facebookresearch/fairseq.git@v0.12.2#egg=fairseq
+# fairseq (HuBERT)
+fairseq==0.12.2; python_version < "3.12"
+fairseq @ git+https://github.com/facebookresearch/fairseq.git@v0.12.2#egg=fairseq; python_version >= "3.12"
 
-# ===============================
 # UI / Utils
-# ===============================
 gradio==4.44.1
 requests>=2.31.0,<3
 tqdm==4.66.4
 yt-dlp>=2024.10.22
 
-# ===============================
-# ONNX Runtime (CUDA 12.x)
-# ===============================
+# ONNX Runtime (GPU)
 onnxruntime-gpu>=1.17.0
 
-# ===============================
-# Torch (оставляем Colab-версию)
-# ===============================
+# Torch (use Colab CUDA build)
 torch
 torchaudio
 torchvision
