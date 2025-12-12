@@ -1,5 +1,5 @@
 # AICoverGen
-An autonomous pipeline to create covers with any RVC v2 trained AI voice from YouTube videos or a local audio file. For developers who may want to add a singing functionality into their AI assistant/chatbot/vtuber, or for people who want to hear their favourite characters sing their favourite song.
+An autonomous pipeline to create covers with any RVC v2 trained AI voice from YouTube videos or a local audio file. For developers who may want to add a singing functionality into their AI assistant/chatbot/vtuber, or for people who want to hear their favourite characters sing their favourite song. The current stack targets Python 3.10–3.12 with CUDA 12.x and Gradio 5.23.x to avoid the APIInfoParseError seen on older pins.
 
 Showcase: https://www.youtube.com/watch?v=2qZuE4WM7CM
 
@@ -31,15 +31,15 @@ WebUI is under constant development and testing, but you can try it out right no
 
 ## Update AICoverGen to latest version
 
-Install and pull any new requirements and changes by opening a command line window in the `AICoverGen` directory and running the following commands.
+Install and pull any new requirements and changes by opening a command line window in the `AISingersCoverGen` directory and running the following commands.
 
 ```
 pip install -r requirements.txt
 git pull
 ```
 
-For colab users, simply click `Runtime` in the top navigation bar of the colab notebook and `Disconnect and delete runtime` in the dropdown menu.
-Then follow the instructions in the notebook to run the webui.
+For Colab users, simply click `Runtime` in the top navigation bar of the colab notebook and `Disconnect and delete runtime` in the dropdown menu.
+Then follow the instructions in the notebook to run the WebUI.
 
 ## Download the latest files as a zip
 
@@ -63,13 +63,11 @@ python scripts/package_updated_files.py --mode light --include-models
 
 ## Colab notebook
 
-For those without a powerful enough NVIDIA GPU, you may try AICoverGen out using Google Colab.
+For those without a powerful enough NVIDIA GPU, you may try AISingersCoverGen out using Google Colab.
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hinabl/AICoverGen-Colab/blob/main/Hina_Mod_AICoverGen_colab.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/varaslaw/AISingersCoverGen/blob/main/AICoverGen_colab.ipynb)
 
-For those who face issues with Google Colab notebook disconnecting after a few minutes, here's an alternative that doesn't use the WebUI.
-
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ardha27/AICoverGen-NoUI-Colab/blob/main/CoverGen_No_UI.ipynb)
+The bundled notebook clones this repository, installs the refreshed Gradio 5.23.x requirements, and launches `webui-ru.py` with `--share` so the public URL opens without ASGI errors.
 
 For those who want to run this locally, follow the setup guide below.
 
@@ -77,7 +75,7 @@ For those who want to run this locally, follow the setup guide below.
 
 ### Install Git and Python
 
-Follow the instructions [here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) to install Git on your computer. Also follow this [guide](https://realpython.com/installing-python/) to install Python **VERSION 3.10 or 3.11** if you haven't already. The refreshed dependency stack in `requirements.txt` is validated on these versions and assumes CUDA 12.x runtimes (matching 2025 Google Colab builds); older Python versions are no longer supported.
+Follow the instructions [here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) to install Git on your computer. Also follow this [guide](https://realpython.com/installing-python/) to install Python **VERSION 3.10, 3.11, or 3.12** if you haven't already. The refreshed dependency stack in `requirements.txt` is validated on these versions and assumes CUDA 12.x runtimes (matching 2025 Google Colab builds); older Python versions are no longer supported.
 
 ### Install ffmpeg
 
@@ -94,8 +92,8 @@ Open a command line window and run these commands to clone this entire repositor
 > **Note:** Install PyTorch/ONNX Runtime builds that match your CUDA runtime. Colab's current images ship CUDA 12.x, so the default `pip install -r requirements.txt` flow will pull the correct wheels. If you are on CUDA 11.8, explicitly pin the corresponding torch/onnxruntime-gpu wheels before installing the rest of the dependencies.
 
 ```
-git clone https://github.com/SociallyIneptWeeb/AICoverGen
-cd AICoverGen
+git clone https://github.com/varaslaw/AISingersCoverGen
+cd AISingersCoverGen
 pip install -r requirements.txt
 ```
 
@@ -113,7 +111,7 @@ python src/download_models.py
 To run the AICoverGen WebUI, run the following command.
 
 ```
-python src/webui.py
+python src/webui-ru.py --share
 ```
 
 | Flag                                       | Description |
@@ -124,7 +122,7 @@ python src/webui.py
 | `--listen-host LISTEN_HOST`                | The hostname that the server will use. |
 | `--listen-port LISTEN_PORT`                | The listening port that the server will use. |
 
-Once the following output message `Running on local URL:  http://127.0.0.1:7860` appears, you can click on the link to open a tab with the WebUI.
+The WebUI automatically selects a free port (falling back from 7860 if needed) and binds to `0.0.0.0` when `--share` or `--listen` are passed. When the output message `Running on local URL:  http://127.0.0.1:7860` (or a nearby port) appears, you can click on the link to open a tab with the WebUI.
 
 ### Download RVC models via WebUI
 

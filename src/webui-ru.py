@@ -226,7 +226,7 @@ if __name__ == '__main__':
                         with gr.Column(scale=3):
                             record_button = gr.Audio(
                                 label='Записать вокал',
-                                sources=["microphone"],
+                                sources=["microphone", "upload"],
                                 type="filepath",
                                 streaming=True,
                             )
@@ -366,8 +366,8 @@ if __name__ == '__main__':
                 gr.Markdown('**👤 ЗАКАЗАТЬ МОДЕЛЬ НА ЗАКАЗ ТГ:** https://t.me/simbioz_2002')
                 gr.Markdown('**🐣 YouTube Канал:** https://www.youtube.com/@DrawAvatarsTV')
 
-    server_name = None if not args.listen else (args.listen_host or '0.0.0.0')
-    port_host = args.listen_host or ('0.0.0.0' if args.listen else '127.0.0.1')
+    server_name = args.listen_host or '0.0.0.0'
+    port_host = server_name if args.listen or args.share_enabled else '127.0.0.1'
     preferred_port = args.listen_port or 7860
 
     def get_available_port(port, host):
