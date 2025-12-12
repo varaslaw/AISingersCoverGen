@@ -2,7 +2,6 @@ from functools import lru_cache
 from time import time as ttime
 
 import faiss
-import librosa
 import numpy as np
 import os
 import parselmouth
@@ -39,24 +38,36 @@ def cache_harvest_f0(input_audio_path, fs, f0max, f0min, frame_period):
 
 
 def change_rms(data1, sr1, data2, sr2, rate):  # 1是输入音频，2是输出音频,rate是2的占比
-    # print(data1.max(),data2.max())
-    rms1 = librosa.feature.rms(
-        y=data1, frame_length=sr1 // 2 * 2, hop_length=sr1 // 2
-    )  # 每半秒一个点
-    rms2 = librosa.feature.rms(y=data2, frame_length=sr2 // 2 * 2, hop_length=sr2 // 2)
-    rms1 = torch.from_numpy(rms1)
+    frame_length1 = (sr1 // 2) * 2
+    hop_length1 = sr1 // 2
+    frame_length2 = (sr2 // 2) * 2
+    hop_length2 = sr2 // 2
+
+    def _rms(y, frame_length, hop_length):
+        audio = torch.as_tensor(y, dtype=torch.float32)
+        audio = audio.unsqueeze(0).unsqueeze(0)
+        pad = frame_length // 2
+        audio = F.pad(audio, (pad, pad), mode="reflect")
+        rms = torch.sqrt(
+            F.avg_pool1d(
+                audio.pow(2), kernel_size=frame_length, stride=hop_length, ceil_mode=True
+            )
+        )
+        return rms.squeeze(0).squeeze(0)
+
+    rms1 = _rms(data1, frame_length1, hop_length1)
+    rms2 = _rms(data2, frame_length2, hop_length2)
+
     rms1 = F.interpolate(
-        rms1.unsqueeze(0), size=data2.shape[0], mode="linear"
+        rms1.unsqueeze(0).unsqueeze(0), size=data2.shape[0], mode="linear", align_corners=False
     ).squeeze()
-    rms2 = torch.from_numpy(rms2)
     rms2 = F.interpolate(
-        rms2.unsqueeze(0), size=data2.shape[0], mode="linear"
+        rms2.unsqueeze(0).unsqueeze(0), size=data2.shape[0], mode="linear", align_corners=False
     ).squeeze()
-    rms2 = torch.max(rms2, torch.zeros_like(rms2) + 1e-6)
-    data2 *= (
-        torch.pow(rms1, torch.tensor(1 - rate))
-        * torch.pow(rms2, torch.tensor(rate - 1))
-    ).numpy()
+
+    rms2 = torch.clamp(rms2, min=1e-6)
+    scale = torch.pow(rms1, 1 - rate) * torch.pow(rms2, rate - 1)
+    data2 *= scale.cpu().numpy()
     return data2
 
 
@@ -211,6 +222,8 @@ class VC(object):
 
     # Fork Feature: Compute pYIN f0 method
     def get_f0_pyin_computation(self, x, f0_min, f0_max):
+        import librosa
+
         y, sr = librosa.load("saudio/Sidney.wav", self.sr, mono=True)
         f0, _, _ = librosa.pyin(y, sr=self.sr, fmin=f0_min, fmax=f0_max)
         f0 = f0[1:]  # Get rid of extra first frame
@@ -416,7 +429,7 @@ class VC(object):
         ) + 1
         f0_mel[f0_mel <= 1] = 1
         f0_mel[f0_mel > 255] = 255
-        f0_coarse = np.rint(f0_mel).astype(np.int)
+        f0_coarse = np.rint(f0_mel).astype(np.int32)
 
         return f0_coarse, f0bak  # 1-0
 
@@ -694,9 +707,7 @@ class VC(object):
         if rms_mix_rate != 1:
             audio_opt = change_rms(audio, 16000, audio_opt, tgt_sr, rms_mix_rate)
         if resample_sr >= 16000 and tgt_sr != resample_sr:
-            audio_opt = librosa.resample(
-                audio_opt, orig_sr=tgt_sr, target_sr=resample_sr
-            )
+            audio_opt = signal.resample_poly(audio_opt, resample_sr, tgt_sr)
         audio_max = np.abs(audio_opt).max() / 0.99
         max_int16 = 32768
         if audio_max > 1:
