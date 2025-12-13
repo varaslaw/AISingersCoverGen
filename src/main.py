@@ -280,10 +280,14 @@ def voice_change(
         display_progress(status_message, 0.45, is_webui, progress)
     else:
         print(status_message)
+    hubert_checkpoint = os.path.join(rvc_models_dir, 'hubert_base.pt')
+    if not os.path.exists(hubert_checkpoint):
+        hubert_checkpoint = None
+
     hubert_model = load_hubert(
         device,
         config.is_half,
-        os.path.join(rvc_models_dir, 'hubert_base.pt'),
+        hubert_checkpoint,
         backend=hubert_backend,
         encoder_type=encoder_type,
     )

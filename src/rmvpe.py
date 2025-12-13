@@ -317,6 +317,22 @@ class MelSpectrogram(torch.nn.Module):
             if resize < size:
                 magnitude = F.pad(magnitude, (0, 0, 0, size - resize))
             magnitude = magnitude[:, :size, :] * self.win_length / win_length_new
+        # Ensure shapes align: mel_basis [n_mels, n_freq] x magnitude [B, n_freq, T]
+        # Some torchaudio/librosa versions return magnitude as [B, T, n_freq]; fix axis
+        if magnitude.dim() == 3 and magnitude.shape[1] != self.mel_basis.shape[-1]:
+            if magnitude.shape[2] == self.mel_basis.shape[-1]:
+                magnitude = magnitude.transpose(1, 2)
+        # Correct mel_basis orientation if constructed as [n_freq, n_mels]
+        if self.mel_basis.dim() == 2 and self.mel_basis.shape[0] != self.n_mel_channels:
+            if self.mel_basis.shape[1] == self.n_mel_channels:
+                self.mel_basis = self.mel_basis.transpose(0, 1)
+        elif self.mel_basis.dim() == 3:
+            # Handle batched mel_basis variants
+            if (
+                self.mel_basis.shape[1] != self.n_mel_channels
+                and self.mel_basis.shape[2] == self.n_mel_channels
+            ):
+                self.mel_basis = self.mel_basis.transpose(1, 2)
         mel_output = torch.matmul(self.mel_basis, magnitude)
         if self.is_half == True:
             mel_output = mel_output.half()

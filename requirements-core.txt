@@ -2,9 +2,9 @@
 # Tested with Python 3.10–3.12 + CUDA 12.x
 # Gradio 5.23.x to avoid APIInfoParseError and legacy UI breakage
 
-# Core audio / math
-numpy==1.26.4
-scipy==1.11.4
+# Core audio / math (compatible with Colab Python 3.12 and numpy 2.x)
+numpy>=2.0,<3
+scipy>=1.13,<2
 soundfile==0.12.1
 pydub==0.25.1
 ffmpeg-python>=0.2.0
@@ -21,9 +21,9 @@ torchcrepe==0.0.24
 transformers==4.45.2
 
 # UI / Utils
-gradio==5.23.1
+gradio>=5.0,<6
 requests>=2.31.0,<3
-tqdm==4.66.4
+tqdm>=4.66,<5
 yt-dlp>=2024.10.22
 gdown>=5.2.0
 pyngrok>=7.1.0
