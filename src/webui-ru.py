@@ -71,7 +71,7 @@ def get_current_models(models_dir):
 
 def update_models_list():
     models_l = get_current_models(rvc_models_dir)
-    return gr.Dropdown.update(choices=models_l)
+    return gr.update(choices=models_l)
 
 def load_public_models():
     models_table = []
@@ -81,7 +81,7 @@ def load_public_models():
             models_table.append(model_info)
 
     tags = list(public_models['tags'].keys())
-    return gr.DataFrame.update(value=models_table), gr.CheckboxGroup.update(choices=tags)
+    return gr.update(value=models_table), gr.update(choices=tags)
 
 def extract_zip(extraction_folder, zip_name):
     os.makedirs(extraction_folder, exist_ok=True)
@@ -198,10 +198,10 @@ def filter_models(tags, query):
             if query.lower() in model_attributes:
                 models_table.append([model['name'], model['description'], model['credit'], model['url'], model['tags']])
 
-    return gr.DataFrame.update(value=models_table)
+    return gr.update(value=models_table)
 
 def pub_dl_autofill(pub_models, event: gr.SelectData):
-    return gr.Textbox.update(value=pub_models.loc[event.index[0], 'URL']), gr.Textbox.update(value=pub_models.loc[event.index[0], 'Имя модели'])
+    return gr.update(value=pub_models.loc[event.index[0], 'URL']), gr.update(value=pub_models.loc[event.index[0], 'Имя модели'])
 
 def swap_visibility():
     return gr.update(visible=True), gr.update(visible=False), gr.update(value=''), gr.update(value=None)

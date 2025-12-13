@@ -1,4 +1,6 @@
+import argparse
 from pathlib import Path
+
 import requests
 
 MDX_DOWNLOAD_LINK = 'https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/'
@@ -18,12 +20,23 @@ def dl_model(link, model_name, dir_name):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Download core models for AISingersCoverGen")
+    parser.add_argument(
+        "--with-fairseq-checkpoint",
+        action="store_true",
+        help="Also download hubert_base.pt for the optional fairseq backend",
+    )
+    args = parser.parse_args()
+
     mdx_model_names = ['UVR-MDX-NET-Voc_FT.onnx', 'UVR_MDXNET_KARA_2.onnx', 'Reverb_HQ_By_FoxJoy.onnx']
     for model in mdx_model_names:
         print(f'Downloading {model}...')
         dl_model(MDX_DOWNLOAD_LINK, model, mdxnet_models_dir)
 
-    rvc_model_names = ['hubert_base.pt', 'rmvpe.pt']
+    rvc_model_names = ['rmvpe.pt']
+    if args.with_fairseq_checkpoint:
+        rvc_model_names.append('hubert_base.pt')
+
     for model in rvc_model_names:
         print(f'Downloading {model}...')
         dl_model(RVC_DOWNLOAD_LINK, model, rvc_models_dir)

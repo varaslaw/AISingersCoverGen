@@ -43,7 +43,13 @@ def _cached_hubert_model(model_path: str, device: str, is_half: bool):
 
 
 class TransformersHubertWrapper(torch.nn.Module):
-    def __init__(self, model_path: str, device: str, is_half: bool, normalize_input: bool):
+    def __init__(
+        self,
+        model_path: str,
+        device: str,
+        is_half: bool,
+        normalize_input: bool = False,
+    ):
         super().__init__()
         self.device = device
         self.is_half = is_half
@@ -135,13 +141,14 @@ class FairseqHubertWrapper(torch.nn.Module):
 
 
 class TorchaudioHubertWrapper(torch.nn.Module):
-    def __init__(self, device: str, is_half: bool):
+    def __init__(self, device: str, is_half: bool, normalize_input: bool = False):
         super().__init__()
         from torchaudio.pipelines import HUBERT_BASE
 
         self.model = HUBERT_BASE.get_model().to(device)
         self.device = device
         self.is_half = is_half
+        self.normalize_input = normalize_input
         if is_half:
             self.model.half()
         else:
@@ -153,6 +160,8 @@ class TorchaudioHubertWrapper(torch.nn.Module):
 
     def extract_features(self, source, padding_mask=None, output_layer=None):
         source = source.to(self.device)
+        if self.normalize_input:
+            source = torch.nn.functional.layer_norm(source, source.shape[-1:])
         if padding_mask is not None:
             source = source * (~padding_mask).to(self.device)
         features, _ = self.model.extract_features(source)
@@ -248,32 +257,75 @@ def _is_module_available(module_name: str) -> bool:
     return importlib.util.find_spec(module_name) is not None
 
 
-def _select_backend(backend: str, model_path: str) -> str:
+def _resolve_transformers_model_id(model_path: str | None) -> str:
+    if model_path is None:
+        return "facebook/hubert-base-ls960"
+
+    path_obj = Path(model_path)
+    if path_obj.is_file():
+        # Avoid feeding a .pt checkpoint into from_pretrained to prevent UTF decode errors
+        print(
+            f"[HuBERT] '{model_path}' looks like a checkpoint file; falling back to Hugging Face hub model."
+        )
+        return "facebook/hubert-base-ls960"
+
+    if path_obj.exists():
+        return str(path_obj)
+
+    # Assume it's a HF model id; caller might have provided a custom repo
+    return model_path
+
+
+def _select_backend(backend: str) -> str:
     if backend != "auto":
         return backend
 
-    if Path(model_path).is_file():
-        return "fairseq"
     if _is_module_available("torchaudio"):
         return "torchaudio"
-    return "transformers"
+    if _is_module_available("transformers"):
+        return "transformers"
+    if _is_module_available("fairseq"):
+        return "fairseq"
+    raise ImportError("No compatible HuBERT backend available. Install torchaudio or transformers.")
 
 
-def load_hubert(device, is_half, model_path, backend: str = "auto", encoder_type: str | None = None):
-    selected_backend = _select_backend(backend, model_path)
+def load_hubert(
+    device,
+    is_half,
+    model_path: str | None = None,
+    backend: str = "auto",
+    encoder_type: str | None = None,
+    normalize_input: bool = False,
+    **_: object,
+):
+    selected_backend = _select_backend(backend)
     encoder_choice = encoder_type or selected_backend
     print(f"[HuBERT] Using backend '{selected_backend}' (encoder type '{encoder_choice}')")
 
     if selected_backend == "fairseq":
         if not _is_module_available("fairseq"):
-            raise ImportError("fairseq backend selected but fairseq is not installed")
+            raise ImportError(
+                "fairseq backend requested but fairseq is not installed. "
+                "Use backend='torchaudio' or backend='transformers' for Colab compatibility."
+            )
+        if model_path is None:
+            raise ValueError("Fairseq backend requires a checkpoint path (e.g., hubert_base.pt)")
         return FairseqHubertWrapper(model_path, device, is_half)
+
     if selected_backend == "torchaudio":
         if not _is_module_available("torchaudio"):
             raise ImportError("torchaudio backend selected but torchaudio is not installed")
-        return TorchaudioHubertWrapper(device, is_half)
+        return TorchaudioHubertWrapper(device, is_half, normalize_input=normalize_input)
+
     if selected_backend == "transformers":
-        return TransformersHubertWrapper(model_path, device, is_half, normalize_input=False)
+        resolved_model = _resolve_transformers_model_id(model_path)
+        return TransformersHubertWrapper(
+            resolved_model,
+            device,
+            is_half,
+            normalize_input=normalize_input,
+        )
+
     raise ValueError(f"Unsupported HuBERT backend: {selected_backend}")
 
 
